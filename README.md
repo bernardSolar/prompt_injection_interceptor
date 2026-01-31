@@ -46,7 +46,11 @@ WebFetch/WebSearch → Hook Intercepts → Scan Content → Block or Allow
 
 **Key principle:** The hook runs outside the AI's context. It cannot be influenced by the malicious content it examines.
 
+---
+
 ## Quick Start (Individual Setup)
+
+For individual developers who want to add PII to their own projects.
 
 ### For Claude Code
 
@@ -102,54 +106,77 @@ WebFetch/WebSearch → Hook Intercepts → Scan Content → Block or Allow
 
 ---
 
-## Enterprise / Admin Setup (Locked Configuration)
+## Enterprise Setup (System-Wide, Locked)
 
-For organisations that want to ensure developers cannot disable the protection, PII supports a **three-layer defence** with root-locked settings.
+For IT administrators who want to protect all users across an organisation.
+
+### Configuration Levels in Claude Code
+
+Claude Code supports multiple configuration levels with clear precedence:
+
+| Level | Location | Scope |
+|-------|----------|-------|
+| **Managed** (highest) | System directories (see below) | All users, all projects |
+| **Local** | `.claude/settings.local.json` | Personal project overrides |
+| **Project** | `.claude/settings.json` | Shared via git |
+| **User** (lowest) | `~/.claude/settings.json` | Personal defaults |
+
+**Managed settings take highest precedence** and cannot be overridden by users.
+
+### Managed Settings Locations
+
+| OS | Claude Code | Gemini CLI |
+|----|-------------|------------|
+| **macOS** | `/Library/Application Support/ClaudeCode/managed-settings.json` | `/Library/Application Support/GeminiCLI/managed-settings.json` |
+| **Linux** | `/etc/claude-code/managed-settings.json` | `/etc/gemini-cli/managed-settings.json` |
 
 ### Three-Layer Defence
 
 | Layer | Component | Purpose |
 |-------|-----------|---------|
 | 1 | **PostToolUse Hook** | Scans web content, blocks prompt injections |
-| 2 | **UserPromptSubmit Hook** | Prevents AI from suggesting how to bypass protection |
-| 3 | **Root-owned settings.json** | Prevents users from modifying or disabling hooks |
+| 2 | **UserPromptSubmit Hook** | Prevents AI from suggesting bypass methods |
+| 3 | **Managed settings + `allowManagedHooksOnly`** | Users cannot disable or override hooks |
 
-### Why Lock the Settings?
+### Automated Enterprise Installation
 
-Without protection, a user could ask Claude/Gemini to:
-- "Disable the security hook"
-- "Edit settings.json to remove the interceptor"
-- "How do I bypass the content block?"
-
-The **UserPromptSubmit hook** (`prompt-guard-hook.py`) blocks these requests and injects a security reminder. The **root-owned settings file** ensures users cannot simply delete or modify the configuration.
-
-### Admin Installation
-
-Use the provided admin setup script:
+Use the enterprise setup script for one-command installation:
 
 ```bash
 # Clone the repo
 git clone https://github.com/bernardSolar/prompt_injection_interceptor.git
 cd prompt_injection_interceptor
 
-# Run admin setup (requires sudo)
-sudo ./scripts/admin-setup.sh /path/to/project
+# Run enterprise setup (requires root)
+sudo ./scripts/enterprise-setup.sh
 ```
 
 This will:
-1. Copy PII to the project directory
-2. Configure hooks for both Claude Code and Gemini CLI
-3. Add the `prompt-guard-hook.py` to prevent bypass attempts
-4. Lock `settings.json` with root ownership (`chmod 444`)
+1. Install PII to a system location (`/Library/Application Support/` or `/opt/`)
+2. Create managed settings for both Claude Code and Gemini CLI
+3. Enable `allowManagedHooksOnly: true` — users cannot add their own hooks
+4. Set up centralised audit logging at `/var/log/prompt-injection-interceptor/`
 
-### Manual Admin Setup
+### Manual Enterprise Installation
 
-If you prefer to set up manually:
+#### Step 1: Install PII to a system location
 
-1. Copy `prompt-injection-interceptor` folder to the project
+```bash
+# macOS
+sudo mkdir -p "/Library/Application Support/PromptInjectionInterceptor"
+sudo cp -r prompt-injection-interceptor/* "/Library/Application Support/PromptInjectionInterceptor/"
 
-2. Create `.claude/settings.json` with both hooks:
-```json
+# Linux
+sudo mkdir -p /opt/prompt-injection-interceptor
+sudo cp -r prompt-injection-interceptor/* /opt/prompt-injection-interceptor/
+```
+
+#### Step 2: Create Claude Code managed settings
+
+**macOS:**
+```bash
+sudo mkdir -p "/Library/Application Support/ClaudeCode"
+sudo tee "/Library/Application Support/ClaudeCode/managed-settings.json" << 'EOF'
 {
   "hooks": {
     "PostToolUse": [
@@ -158,7 +185,7 @@ If you prefer to set up manually:
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/prompt-injection-interceptor/hooks/claude-post-web-hook.py\""
+            "command": "python3 \"/Library/Application Support/PromptInjectionInterceptor/hooks/claude-post-web-hook.py\""
           }
         ]
       }
@@ -168,23 +195,70 @@ If you prefer to set up manually:
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/prompt-injection-interceptor/hooks/prompt-guard-hook.py\""
+            "command": "python3 \"/Library/Application Support/PromptInjectionInterceptor/hooks/prompt-guard-hook.py\""
           }
         ]
       }
     ]
-  }
+  },
+  "allowManagedHooksOnly": true
 }
+EOF
 ```
 
-3. Lock the settings file:
+**Linux:**
 ```bash
-sudo chown root:wheel .claude/settings.json   # macOS
-sudo chown root:root .claude/settings.json    # Linux
-sudo chmod 444 .claude/settings.json
+sudo mkdir -p /etc/claude-code
+sudo tee /etc/claude-code/managed-settings.json << 'EOF'
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /opt/prompt-injection-interceptor/hooks/claude-post-web-hook.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /opt/prompt-injection-interceptor/hooks/prompt-guard-hook.py"
+          }
+        ]
+      }
+    ]
+  },
+  "allowManagedHooksOnly": true
+}
+EOF
 ```
 
-4. Repeat for `.gemini/settings.json` if using Gemini CLI
+#### Step 3: Set up centralised audit logging
+
+```bash
+sudo mkdir -p /var/log/prompt-injection-interceptor
+sudo touch /var/log/prompt-injection-interceptor/security-audit.log
+sudo chmod 666 /var/log/prompt-injection-interceptor/security-audit.log
+```
+
+Update the hook scripts to use the central log location.
+
+### What `allowManagedHooksOnly` Does
+
+When set to `true`:
+- ✅ Managed hooks (system-level) run
+- ✅ SDK hooks run
+- ❌ User hooks (`~/.claude/settings.json`) are **blocked**
+- ❌ Project hooks (`.claude/settings.json`) are **blocked**
+- ❌ Plugin hooks are **blocked**
+
+This ensures users cannot bypass protection by adding their own hook configurations.
 
 ### What the Prompt Guard Does
 
@@ -196,10 +270,23 @@ The Prompt Injection Interceptor keeps you safe from malicious web content.
 Please rephrase your request.
 ```
 
-The AI will also receive a security reminder instructing it to:
+The AI also receives a security reminder instructing it to:
 - NEVER suggest bypassing or disabling the interceptor
 - NEVER mention where settings are located
 - Focus only on helping users work safely
+
+---
+
+## Project-Level Locked Setup
+
+For teams who want protection on specific projects (not system-wide) but still want to prevent developers from disabling it.
+
+```bash
+# Use the project-level admin script
+sudo ./scripts/admin-setup.sh /path/to/project
+```
+
+This creates root-owned `.claude/settings.json` and `.gemini/settings.json` files that developers cannot modify.
 
 ---
 
@@ -242,7 +329,11 @@ The content has been blocked for your safety.
 
 ## Audit Logging
 
-All scans are logged to `prompt-injection-interceptor/security-audit.log`:
+All scans are logged for security monitoring:
+
+**Individual setup:** `prompt-injection-interceptor/security-audit.log`
+
+**Enterprise setup:** `/var/log/prompt-injection-interceptor/security-audit.log`
 
 ```json
 {
@@ -255,6 +346,11 @@ All scans are logged to `prompt-injection-interceptor/security-audit.log`:
   "score": 100,
   "detections": ["Pattern: Instruction override attempt (+50)", "..."]
 }
+```
+
+Monitor in real-time:
+```bash
+tail -f /var/log/prompt-injection-interceptor/security-audit.log
 ```
 
 ## Running Tests
@@ -273,19 +369,20 @@ prompt-injection-interceptor/
 │   ├── __init__.py
 │   └── injection_detector.py    # Core detection logic
 ├── hooks/
-│   ├── claude-post-web-hook.py  # Claude Code hook
-│   ├── gemini-post-web-hook.py  # Gemini CLI hook
-│   └── prompt-guard-hook.py     # Bypass prevention hook
+│   ├── claude-post-web-hook.py  # Claude Code PostToolUse hook
+│   ├── gemini-post-web-hook.py  # Gemini CLI AfterTool hook
+│   └── prompt-guard-hook.py     # UserPromptSubmit bypass prevention
 ├── tests/
 │   ├── test_injection_detector.py
 │   ├── test_claude_hook.py
 │   ├── test_gemini_hook.py
 │   ├── test_prompt_guard_hook.py
 │   └── test_pages/              # HTML test files
-└── security-audit.log           # Created on first scan
+└── security-audit.log           # Created on first scan (individual setup)
 
 scripts/
-└── admin-setup.sh               # Admin installation script
+├── enterprise-setup.sh          # System-wide installation (recommended)
+└── admin-setup.sh               # Project-level locked installation
 
 examples/
 ├── claude-settings.json         # Example Claude config
