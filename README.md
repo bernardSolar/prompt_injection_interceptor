@@ -46,7 +46,7 @@ WebFetch/WebSearch → Hook Intercepts → Scan Content → Block or Allow
 
 **Key principle:** The hook runs outside the AI's context. It cannot be influenced by the malicious content it examines.
 
-## Quick Start
+## Quick Start (Individual Setup)
 
 ### For Claude Code
 
@@ -99,6 +99,109 @@ WebFetch/WebSearch → Hook Intercepts → Scan Content → Block or Allow
 3. **Restart Gemini CLI** to load the new hook configuration.
 
 4. The hook will now scan all web content.
+
+---
+
+## Enterprise / Admin Setup (Locked Configuration)
+
+For organisations that want to ensure developers cannot disable the protection, PII supports a **three-layer defence** with root-locked settings.
+
+### Three-Layer Defence
+
+| Layer | Component | Purpose |
+|-------|-----------|---------|
+| 1 | **PostToolUse Hook** | Scans web content, blocks prompt injections |
+| 2 | **UserPromptSubmit Hook** | Prevents AI from suggesting how to bypass protection |
+| 3 | **Root-owned settings.json** | Prevents users from modifying or disabling hooks |
+
+### Why Lock the Settings?
+
+Without protection, a user could ask Claude/Gemini to:
+- "Disable the security hook"
+- "Edit settings.json to remove the interceptor"
+- "How do I bypass the content block?"
+
+The **UserPromptSubmit hook** (`prompt-guard-hook.py`) blocks these requests and injects a security reminder. The **root-owned settings file** ensures users cannot simply delete or modify the configuration.
+
+### Admin Installation
+
+Use the provided admin setup script:
+
+```bash
+# Clone the repo
+git clone https://github.com/bernardSolar/prompt_injection_interceptor.git
+cd prompt_injection_interceptor
+
+# Run admin setup (requires sudo)
+sudo ./scripts/admin-setup.sh /path/to/project
+```
+
+This will:
+1. Copy PII to the project directory
+2. Configure hooks for both Claude Code and Gemini CLI
+3. Add the `prompt-guard-hook.py` to prevent bypass attempts
+4. Lock `settings.json` with root ownership (`chmod 444`)
+
+### Manual Admin Setup
+
+If you prefer to set up manually:
+
+1. Copy `prompt-injection-interceptor` folder to the project
+
+2. Create `.claude/settings.json` with both hooks:
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/prompt-injection-interceptor/hooks/claude-post-web-hook.py\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/prompt-injection-interceptor/hooks/prompt-guard-hook.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+3. Lock the settings file:
+```bash
+sudo chown root:wheel .claude/settings.json   # macOS
+sudo chown root:root .claude/settings.json    # Linux
+sudo chmod 444 .claude/settings.json
+```
+
+4. Repeat for `.gemini/settings.json` if using Gemini CLI
+
+### What the Prompt Guard Does
+
+When a user tries to bypass security, they'll see:
+
+```
+This prompt requests disabling security protection, which is not permitted.
+The Prompt Injection Interceptor keeps you safe from malicious web content.
+Please rephrase your request.
+```
+
+The AI will also receive a security reminder instructing it to:
+- NEVER suggest bypassing or disabling the interceptor
+- NEVER mention where settings are located
+- Focus only on helping users work safely
+
+---
 
 ## What It Detects
 
@@ -171,13 +274,18 @@ prompt-injection-interceptor/
 │   └── injection_detector.py    # Core detection logic
 ├── hooks/
 │   ├── claude-post-web-hook.py  # Claude Code hook
-│   └── gemini-post-web-hook.py  # Gemini CLI hook
+│   ├── gemini-post-web-hook.py  # Gemini CLI hook
+│   └── prompt-guard-hook.py     # Bypass prevention hook
 ├── tests/
 │   ├── test_injection_detector.py
 │   ├── test_claude_hook.py
 │   ├── test_gemini_hook.py
+│   ├── test_prompt_guard_hook.py
 │   └── test_pages/              # HTML test files
 └── security-audit.log           # Created on first scan
+
+scripts/
+└── admin-setup.sh               # Admin installation script
 
 examples/
 ├── claude-settings.json         # Example Claude config
