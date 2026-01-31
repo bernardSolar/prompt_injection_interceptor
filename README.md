@@ -57,7 +57,9 @@ WebFetch/WebSearch → Hook Intercepts → Scan Content → Block or Allow
 }
 ```
 
-3. That's it! The hook will now scan all web content.
+3. **Restart Claude Code** to load the new hook configuration.
+
+4. That's it! The hook will now scan all web content.
 
 ### For Gemini CLI
 
@@ -79,6 +81,10 @@ WebFetch/WebSearch → Hook Intercepts → Scan Content → Block or Allow
   }
 }
 ```
+
+3. **Restart Gemini CLI** to load the new hook configuration.
+
+4. The hook will now scan all web content.
 
 ## What It Detects
 
