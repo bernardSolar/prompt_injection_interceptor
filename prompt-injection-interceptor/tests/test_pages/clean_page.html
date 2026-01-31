@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clean Test Page - No Injections</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .content {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .test-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clean Test Page</h1>
+
+    <div class="test-info">
+        <strong>Purpose:</strong> This page contains NO prompt injection patterns.
+        It should pass through the Prompt Injection Interceptor without being blocked.
+    </div>
+
+    <div class="content">
+        <h2>Productivity Tips</h2>
+        <p>Here are some genuine productivity tips:</p>
+        <ul>
+            <li>Break large tasks into smaller, manageable chunks</li>
+            <li>Use timeboxing to limit how long you spend on each task</li>
+            <li>Minimize distractions by silencing notifications</li>
+            <li>Take regular breaks to maintain focus</li>
+            <li>Review your progress at the end of each day</li>
+        </ul>
+    </div>
+
+    <div class="content">
+        <h2>About This Test</h2>
+        <p>This page is used to verify that the Prompt Injection Interceptor
+        correctly allows clean content through without false positives.</p>
+        <p>The hook should return exit code 0 for this page.</p>
+    </div>
+
+    <footer>
+        <p><small>Test page for Nyquist Governor - Prompt Injection Interceptor</small></p>
+    </footer>
+</body>
+</html>

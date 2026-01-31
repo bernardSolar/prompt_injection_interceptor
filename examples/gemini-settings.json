@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "enabled": true,
+    "AfterTool": [
+      {
+        "name": "prompt-injection-interceptor",
+        "type": "command",
+        "command": "python3 \"$GEMINI_PROJECT_DIR/prompt-injection-interceptor/hooks/gemini-post-web-hook.py\"",
+        "description": "Scans web content for prompt injection attacks",
+        "matcher": "google_web_search|web_fetch|fetch_url|browse_web",
+        "timeout": 5000
+      }
+    ]
+  }
+}
