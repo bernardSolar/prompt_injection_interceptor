@@ -2,7 +2,7 @@
 
 **Defend your AI coding assistant against prompt injection attacks from web content.**
 
-Works with **Claude Code** and **Gemini CLI**.
+Works with **Claude Code** and **Gemini CLI**. Requires Python 3.8+.
 
 ---
 
