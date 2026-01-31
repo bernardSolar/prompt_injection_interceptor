@@ -1,0 +1,16 @@
+# CODEOWNERS - These users must approve PRs that modify these files
+
+# All hook files require owner approval - these are security-critical
+/prompt-injection-interceptor/hooks/ @bernardSolar
+
+# Core detection logic requires owner approval
+/prompt-injection-interceptor/src/ @bernardSolar
+
+# Scripts that run with elevated privileges require owner approval
+/scripts/ @bernardSolar
+
+# Settings examples could be used to weaken security
+/examples/ @bernardSolar
+
+# Any changes to CI/CD or GitHub config require owner approval
+/.github/ @bernardSolar

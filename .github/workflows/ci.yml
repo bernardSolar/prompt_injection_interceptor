@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+      
+      - name: Run tests
+        run: |
+          cd prompt-injection-interceptor
+          pytest tests/ -v --tb=short
+      
+      - name: Verify no secrets in code
+        run: |
+          # Check for potential secrets/credentials
+          if grep -r -E "(sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|AKIA[A-Z0-9]{16})" --include="*.py" --include="*.json" .; then
+            echo "ERROR: Potential secrets detected in code!"
+            exit 1
+          fi
+          echo "No secrets detected."
+      
+      - name: Verify detection patterns not weakened
+        run: |
+          # Ensure critical patterns still exist in injection_detector.py
+          DETECTOR="prompt-injection-interceptor/src/injection_detector.py"
+          
+          REQUIRED_PATTERNS=(
+            "IGNORE.*PREVIOUS.*INSTRUCTIONS"
+            "YOU.*ARE.*NOW"
+            "SYSTEM.*PROMPT"
+            "\\[INST\\]"
+            "display.*none"
+          )
+          
+          for pattern in "${REQUIRED_PATTERNS[@]}"; do
+            if ! grep -q "$pattern" "$DETECTOR"; then
+              echo "ERROR: Critical detection pattern missing: $pattern"
+              echo "This could indicate an attempt to weaken security."
+              exit 1
+            fi
+          done
+          
+          echo "All critical detection patterns present."
+
+  security-review-reminder:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Remind about security review
+        run: |
+          echo "⚠️ SECURITY REMINDER"
+          echo ""
+          echo "This PR modifies security-critical code."
+          echo "Before approving, verify:"
+          echo "  1. No detection patterns have been removed or weakened"
+          echo "  2. No new bypass mechanisms have been introduced"
+          echo "  3. Exit codes are still correct (0=allow, 2=block)"
+          echo "  4. Audit logging has not been disabled"
+          echo "  5. Tests have not been modified to pass incorrectly"
