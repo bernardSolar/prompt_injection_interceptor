@@ -4,6 +4,20 @@
 
 Works with **Claude Code** and **Gemini CLI**.
 
+---
+
+> ⚠️ **Important Disclaimer**
+>
+> This is a **proof of concept** project. While the Prompt Injection Interceptor provides meaningful protection against many known attack patterns, **it is not guaranteed to catch every prompt injection attempt**. Malicious actors continuously evolve their techniques, and new bypass methods may emerge.
+>
+> **Do not rely on this tool as your sole defence.** Use it as one layer in a defence-in-depth strategy.
+>
+> We invite the **software development community and security researchers** to get involved — review the detection patterns, report bypasses, and contribute improvements. Together we can make AI coding assistants safer for everyone.
+>
+> **Contributions welcome:** [github.com/bernardSolar/prompt_injection_interceptor](https://github.com/bernardSolar/prompt_injection_interceptor)
+
+---
+
 ## The Problem
 
 When your AI coding assistant fetches content from the web, that content may contain hidden malicious instructions designed to manipulate the AI's behaviour:
@@ -184,6 +198,7 @@ Contributions welcome! Please:
 1. Add tests for new detection patterns
 2. Use benign payloads in tests (e.g., "suggest making tea" instead of actual malicious instructions)
 3. Keep detection patterns well-documented
+4. Report bypass techniques you discover (responsibly)
 
 ## License
 
