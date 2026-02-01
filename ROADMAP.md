@@ -201,7 +201,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on adding patterns.
 
 ---
 
-### 9. IDE Integration
+### 8. IDE Integration
 
 **Status:** Concept
 
@@ -213,7 +213,7 @@ Visual indicators in VS Code / JetBrains when browsing to flagged URLs.
 
 ---
 
-### 10. Analytics Dashboard
+### 9. Analytics Dashboard
 
 **Status:** Concept
 
@@ -228,7 +228,7 @@ Could integrate with existing SIEM tools via syslog export.
 
 ---
 
-### 11. Additional CLI Support
+### 10. Additional CLI Support
 
 **Status:** Planned
 
@@ -237,6 +237,90 @@ Support for other AI coding assistants as they add hook systems:
 - GitHub Copilot CLI (when hooks available)
 - Cursor (when hooks available)
 - Others as they emerge
+
+---
+
+### 11. Remote Governance Hooks (Enterprise)
+
+**Status:** Concept
+
+**Priority:** High (enterprise feature)
+
+Move governance logic to a completely separate server, eliminating any possibility of AI compromise.
+
+**The Problem:**
+
+| Approach | Can AI Compromise It? | Why |
+|----------|----------------------|-----|
+| CLAUDE.md / System prompts | Yes | Can be talked out of compliance via prompt injection |
+| Local hooks | Harder | Can't override hooks, but they run on the same machine |
+| **Remote hooks** | **No** | Physically separate — zero attack surface |
+
+**Architecture:**
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────────┐
+│   Claude Code   │────▶│  Local Hook      │────▶│  Remote Governance  │
+│   (untrusted)   │     │  (thin client)   │     │  Server (trusted)   │
+└─────────────────┘     └──────────────────┘     └─────────────────────┘
+                              │                          │
+                              │    curl/gRPC/SSH         │
+                              │◀─────────────────────────│
+                              │    PASS/FAIL + reason    │
+                        ┌─────▼─────┐
+                        │ Exit 0 or 2│
+                        └───────────┘
+```
+
+**The local hook becomes a thin client:**
+
+```python
+#!/usr/bin/env python3
+import requests
+import sys
+import json
+
+# Read hook input from Claude Code
+hook_input = json.load(sys.stdin)
+
+# Call remote governance server
+response = requests.post(
+    "https://governance.yourcompany.com/validate",
+    json=hook_input,
+    timeout=5
+)
+
+result = response.json()
+
+if result["decision"] == "block":
+    print(f"BLOCKED: {result['reason']}")
+    sys.exit(2)
+
+sys.exit(0)
+```
+
+**What the remote server can run:**
+
+- **OPA/Rego policies** — Declarative, auditable rules
+- **Secondary LLM review** — With completely isolated context
+- **Static analysis tools** — On proposed code changes
+- **Threat intelligence lookups** — Check URLs against blocklists
+- **Custom enterprise policies** — Industry-specific compliance
+
+**Enterprise benefits:**
+
+- Centralized policy management across all developers
+- Update policies without touching individual machines
+- Complete audit trail in one location
+- Impossible for compromised AI to disable governance
+- Scales to thousands of developers
+
+**Considerations:**
+
+- Requires network connectivity (fallback policy for offline?)
+- Latency added to hook execution
+- Server availability becomes critical
+- Authentication between client and server
 
 ---
 
