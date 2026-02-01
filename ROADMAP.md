@@ -324,6 +324,57 @@ sys.exit(0)
 
 ---
 
+### 12. Plugin/Extension Marketplace Distribution
+
+**Status:** Planned
+
+**Priority:** High (ease of adoption)
+
+Distribute PII through official plugin marketplaces for one-command installation.
+
+**Target Platforms:**
+
+| Platform | Marketplace | Installation |
+|----------|-------------|--------------|
+| Claude Code | Plugin Marketplace | `/plugin install pii` |
+| Gemini CLI | Extensions Gallery | `gemini extensions install pii` |
+
+**Benefits:**
+
+- **One-command install** — No manual file copying or settings.json editing
+- **Auto-updates** — Users get new detection patterns automatically
+- **Discoverability** — Listed in marketplace searches
+- **Trust signal** — Official marketplace review adds credibility
+
+**Structure for Both Platforms:**
+
+```
+prompt-injection-interceptor/
+├── .claude-plugin/
+│   └── plugin.json           # Claude Code manifest
+├── extension.toml            # Gemini CLI manifest
+├── GEMINI.md                 # Gemini context file
+├── hooks/
+│   ├── hooks.json            # Hook configuration
+│   ├── claude-post-web-hook.py
+│   └── gemini-post-web-hook.py
+├── src/
+│   └── injection_detector.py # Shared detection logic
+└── README.md
+```
+
+**Submission Options:**
+
+- **Claude Code**: Official Anthropic directory (security review) or self-hosted marketplace
+- **Gemini CLI**: Extensions Gallery or direct GitHub installation
+
+**References:**
+
+- Claude Code plugins: https://code.claude.com/docs/en/plugins
+- Gemini CLI extensions: https://geminicli.com/docs/extensions/
+
+---
+
 ## Contributing to the Roadmap
 
 Have an idea? Open an issue with the `enhancement` label describing:
